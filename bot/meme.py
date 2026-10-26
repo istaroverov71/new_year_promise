@@ -30,9 +30,23 @@ def _open_photo(path, width):
     return image.resize((width, height), Image.LANCZOS)
 
 
+def _words(text):
+    """Короткие слова («в», «с», «я») приклеиваем к следующему, чтобы они не висели в конце строки."""
+    words, prefix = [], ""
+    for word in text.split():
+        if len(word) <= 2:
+            prefix += word + "\u00a0"
+        else:
+            words.append(prefix + word)
+            prefix = ""
+    if prefix:
+        words.append(prefix.rstrip("\u00a0"))
+    return words
+
+
 def _wrap(draw, text, font, max_width):
     lines, current = [], ""
-    for word in text.split():
+    for word in _words(text):
         candidate = f"{current} {word}".strip()
         if draw.textlength(candidate, font=font) <= max_width:
             current = candidate
@@ -81,7 +95,7 @@ def render_meme(photo_path, text):
 def render_gallery():
     """Одна картинка со всеми фото и номерами — чтобы выбрать, какое взять."""
     photos = list_photos()
-    columns = 3
+    columns = 2 if len(photos) in (2, 4) else 3
     cell = 360
     rows = -(-len(photos) // columns)
     canvas = Image.new("RGB", (cell * columns, cell * rows), BACKGROUND)

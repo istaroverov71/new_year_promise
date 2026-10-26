@@ -118,15 +118,12 @@ def send_meme(chat_id, who_id, what_id, photo_id):
         return
     telegram.call("sendChatAction", {"chat_id": chat_id, "action": "upload_photo"})
     image = meme.render_meme(photos[photo_id], promise_text(who_id, what_id))
-    telegram.call(
-        "sendPhoto",
-        {
-            "chat_id": chat_id,
-            "caption": "Готово! Перешли друзьям — пусть тоже крутят 🎄",
-            "reply_markup": keyboard([
-                button("🖼 Другое фото", f"meme:{who_id}:{what_id}"),
-                button("🎲 Крутить ещё", "spin"),
-            ]),
-        },
-        files={"photo": ("meme.jpg", image)},
-    )
+    telegram.call("sendPhoto", {"chat_id": chat_id}, files={"photo": ("meme.jpg", image)})
+    telegram.call("sendMessage", {
+        "chat_id": chat_id,
+        "text": "Готово! Перешли друзьям — пусть тоже крутят 🎄",
+        "reply_markup": keyboard([
+            button("🖼 Другое фото", f"meme:{who_id}:{what_id}"),
+            button("🎲 Крутить ещё", "spin"),
+        ]),
+    })

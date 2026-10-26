@@ -19,7 +19,7 @@ Telegram-бот [@newyear_generator_bot](https://t.me/newyear_generator_bot): к
    - `BOT_TOKEN` — токен от BotFather;
    - `WEBHOOK_SECRET` — придумай любую длинную строку из латинских букв и цифр (например `snegovik2027tralala`).
 4. Нажми Deploy и дождись зелёного статуса. Vercel покажет адрес вида `https://new-year-promise.vercel.app`.
-5. Открой в браузере `https://<твой-адрес>/api/setup?secret=<твой WEBHOOK_SECRET>`.
+5. Открой в браузере `https://<твой-адрес>/api/setup`.
    Должно появиться `"ok": true`.
 6. Напиши боту `/start`.
 

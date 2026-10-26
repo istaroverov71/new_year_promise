@@ -1,26 +1,28 @@
 """Одноразовая настройка: говорит Telegram, куда присылать события бота.
 
-Открой в браузере https://<твой-домен>.vercel.app/api/setup?secret=<WEBHOOK_SECRET>
+Открой в браузере https://<твой-домен>.vercel.app/api/setup
+Страница всегда подключает бота только к основному адресу проекта,
+поэтому её безопасно открывать сколько угодно раз.
 """
 import json
+import os
 import sys
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from bot import telegram  # noqa: E402
-from bot.config import WEBHOOK_SECRET  # noqa: E402
+from bot.config import BOT_TOKEN, WEBHOOK_SECRET  # noqa: E402
 
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        secret = parse_qs(urlparse(self.path).query).get("secret", [""])[0]
-        if not WEBHOOK_SECRET or secret != WEBHOOK_SECRET:
-            self._reply(403, {"ok": False, "error": "wrong secret"})
+        domain = os.environ.get("VERCEL_PROJECT_PRODUCTION_URL")
+        if not (BOT_TOKEN and WEBHOOK_SECRET and domain):
+            self._reply(500, {"ok": False, "error": "не заданы BOT_TOKEN или WEBHOOK_SECRET"})
             return
-        url = f"https://{self.headers['Host']}/api/webhook"
+        url = f"https://{domain}/api/webhook"
         result = telegram.call("setWebhook", {
             "url": url,
             "secret_token": WEBHOOK_SECRET,

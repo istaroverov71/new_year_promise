@@ -97,7 +97,8 @@ def choose_photo(chat_id, who_id, what_id):
     global _gallery_file_id
     count = len(meme.list_photos())
     numbers = [button(str(i + 1), f"pick:{who_id}:{what_id}:{i}") for i in range(count)]
-    rows = [numbers[i:i + 5] for i in range(0, count, 5)]
+    per_row = meme.gallery_columns(count)
+    rows = [numbers[i:i + per_row] for i in range(0, count, per_row)]
     params = {
         "chat_id": chat_id,
         "caption": "Выбери фото для мема 👇",

@@ -91,11 +91,16 @@ def render_meme(photo_path, text):
     return _to_jpeg(canvas)
 
 
+def gallery_columns(count):
+    """Сколько фото в ряд, чтобы сетка выбора была без пустых клеток."""
+    return {1: 1, 2: 2, 4: 2, 7: 4, 8: 4}.get(count, 3 if count <= 9 else 4)
+
+
 @lru_cache(maxsize=1)
 def render_gallery():
     """Одна картинка со всеми фото и номерами — чтобы выбрать, какое взять."""
     photos = list_photos()
-    columns = 2 if len(photos) in (2, 4) else 3
+    columns = gallery_columns(len(photos))
     cell = 360
     rows = -(-len(photos) // columns)
     canvas = Image.new("RGB", (cell * columns, cell * rows), BACKGROUND)

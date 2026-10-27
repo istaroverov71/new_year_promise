@@ -60,7 +60,8 @@ def on_callback(query):
         return
 
     pair = find_pair(*args[:2]) if len(args) >= 2 else None
-    if pair is None:
+    photo_id = _photo_id(args) if action == "pick" else None
+    if pair is None or (action == "pick" and photo_id is None):
         stats.record(user_id)
         telegram.call("answerCallbackQuery", {
             "callback_query_id": query["id"],
@@ -74,10 +75,19 @@ def on_callback(query):
         telegram.call("answerCallbackQuery", {"callback_query_id": query["id"]})
         choose_photo(chat_id, *pair)
     elif action == "pick":
-        photo_id = int(args[2])
         stats.record(user_id, "meme", photo_id=photo_id)
         telegram.call("answerCallbackQuery", {"callback_query_id": query["id"], "text": "Рисую мем…"})
         send_meme(chat_id, *pair, photo_id)
+    else:
+        telegram.call("answerCallbackQuery", {"callback_query_id": query["id"]})
+
+
+def _photo_id(args):
+    """Номер фото из кнопки или None, если он кривой."""
+    if len(args) < 3 or not args[2].isdigit():
+        return None
+    photo_id = int(args[2])
+    return photo_id if photo_id < len(meme.list_photos()) else None
 
 
 def _formatted(who_id, what_id):
@@ -140,8 +150,6 @@ def choose_photo(chat_id, who_id, what_id):
 
 def send_meme(chat_id, who_id, what_id, photo_id):
     photos = meme.list_photos()
-    if photo_id >= len(photos):
-        return
     telegram.call("sendChatAction", {"chat_id": chat_id, "action": "upload_photo"})
     image = meme.render_meme(photos[photo_id], promise_text(who_id, what_id))
     telegram.call("sendPhoto", {"chat_id": chat_id}, files={"photo": ("meme.jpg", image)})

@@ -16,9 +16,8 @@ class handler(BaseHTTPRequestHandler):
             self._reply(403, "forbidden")
             return
         length = int(self.headers.get("Content-Length", 0))
-        update = json.loads(self.rfile.read(length) or b"{}")
         try:
-            handle_update(update)
+            handle_update(json.loads(self.rfile.read(length) or b"{}"))
         except Exception as error:  # не роняем вебхук, иначе Telegram будет слать событие повторно
             print(f"Error while handling update: {error!r}")
         self._reply(200, "ok")

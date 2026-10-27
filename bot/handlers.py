@@ -2,8 +2,8 @@
 import html
 import time
 
-from . import meme, telegram
-from .config import YEAR
+from . import meme, stats, telegram
+from .config import ADMIN_ID, YEAR
 from .promises import WHAT, WHO, promise_text, random_pair
 
 SPIN_FRAMES = 4
@@ -29,6 +29,14 @@ def handle_update(update):
 
 
 def on_message(message):
+    user_id = message.get("from", {}).get("id")
+    text = message.get("text", "")
+
+    if text.startswith("/stats") and ADMIN_ID and str(user_id) == ADMIN_ID:
+        telegram.call("sendMessage", {"chat_id": message["chat"]["id"], "text": stats.report()})
+        return
+
+    stats.record(user_id, "start" if text.startswith("/start") else None)
     telegram.call("sendMessage", {
         "chat_id": message["chat"]["id"],
         "text": (
@@ -44,6 +52,14 @@ def on_callback(query):
     chat_id = query["message"]["chat"]["id"]
     action, *args = query["data"].split(":")
     args = [int(a) for a in args]
+    user_id = query.get("from", {}).get("id")
+
+    if action == "spin":
+        stats.record(user_id, "spin")
+    elif action == "pick":
+        stats.record(user_id, "meme", photo_id=args[2])
+    else:
+        stats.record(user_id)
 
     if action == "spin":
         telegram.call("answerCallbackQuery", {"callback_query_id": query["id"]})

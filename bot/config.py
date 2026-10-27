@@ -7,6 +7,8 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 BOT_USERNAME = os.environ.get("BOT_USERNAME", "newyear_generator_bot")
 # Секрет, по которому бот понимает, что запрос пришёл именно от Telegram
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "")
+# Telegram ID владельца: только ему бот отвечает на /stats
+ADMIN_ID = os.environ.get("ADMIN_ID", "")
 
 YEAR = 2027
 

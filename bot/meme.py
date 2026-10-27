@@ -1,5 +1,7 @@
-"""Рисует мем: фото сверху, белая полоса с обещанием снизу."""
+"""Рисует мем: фото сверху, белая полоса со звёздочками и обещанием снизу."""
 import io
+import math
+import random
 from functools import lru_cache
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps
@@ -11,6 +13,8 @@ PADDING = 60
 TEXT_COLOR = (20, 20, 20)
 MUTED_COLOR = (150, 150, 150)
 BACKGROUND = (255, 255, 255)
+STAR_COLORS = [(240, 205, 130), (245, 222, 170), (190, 214, 240), (214, 228, 245)]
+STAR_SCALE = 3  # рисуем звёзды крупнее и уменьшаем — так края получаются гладкими
 
 
 def list_photos():
@@ -63,6 +67,45 @@ def _to_jpeg(image):
     return buffer.getvalue()
 
 
+def _star_points(cx, cy, radius, rays, inner):
+    points = []
+    for i in range(rays * 2):
+        r = radius if i % 2 == 0 else radius * inner
+        angle = math.pi * i / rays - math.pi / 2
+        points.append((cx + r * math.cos(angle), cy + r * math.sin(angle)))
+    return points
+
+
+def _decorate(width, height, keep_out, seed):
+    """Белый фон со светлыми звёздочками и точками, которые обходят текст стороной."""
+    rng = random.Random(seed)
+    s = STAR_SCALE
+    layer = Image.new("RGB", (width * s, height * s), BACKGROUND)
+    draw = ImageDraw.Draw(layer)
+    placed = []
+
+    def free(x, y, r):
+        if any(x0 - r <= x <= x1 + r and y0 - r <= y <= y1 + r for x0, y0, x1, y1 in keep_out):
+            return False
+        return all(math.hypot(x - px, y - py) > r + pr + 14 for px, py, pr in placed)
+
+    for _ in range(400):
+        if len(placed) >= 34:
+            break
+        radius = rng.choice([4, 5, 9, 12, 15, 19])
+        x, y = rng.uniform(radius + 6, width - radius - 6), rng.uniform(radius + 12, height - radius - 6)
+        if not free(x, y, radius):
+            continue
+        placed.append((x, y, radius))
+        color = rng.choice(STAR_COLORS)
+        if radius <= 5:
+            draw.ellipse([(x - radius) * s, (y - radius) * s, (x + radius) * s, (y + radius) * s], fill=color)
+        else:
+            rays, inner = rng.choice([(5, 0.45), (4, 0.3)])
+            draw.polygon(_star_points(x * s, y * s, radius * s, rays, inner), fill=color)
+    return layer.resize((width, height), Image.LANCZOS)
+
+
 def render_meme(photo_path, text):
     photo = _open_photo(photo_path, WIDTH)
     measure = ImageDraw.Draw(photo)
@@ -75,8 +118,21 @@ def render_meme(photo_path, text):
     watermark_font = _font(30, "Regular")
 
     bar_height = PADDING + line_height * len(lines) + 30 + 40 + PADDING // 2
+    watermark = f"@{BOT_USERNAME}"
+    watermark_x = WIDTH - PADDING // 2 - measure.textlength(watermark, font=watermark_font)
+
+    # Где на полосе будет текст — туда звёзды не ставим
+    keep_out = []
+    y = PADDING
+    for line in lines:
+        x = (WIDTH - measure.textlength(line, font=font)) / 2
+        keep_out.append((x - 16, y - 8, WIDTH - x + 16, y + line_height + 4))
+        y += line_height
+    keep_out.append((watermark_x - 12, bar_height - 56, WIDTH, bar_height))
+
     canvas = Image.new("RGB", (WIDTH, photo.height + bar_height), BACKGROUND)
     canvas.paste(photo, (0, 0))
+    canvas.paste(_decorate(WIDTH, bar_height, keep_out, seed=text), (0, photo.height))
     draw = ImageDraw.Draw(canvas)
 
     y = photo.height + PADDING
@@ -85,9 +141,7 @@ def render_meme(photo_path, text):
         draw.text((x, y), line, font=font, fill=TEXT_COLOR)
         y += line_height
 
-    watermark = f"@{BOT_USERNAME}"
-    x = WIDTH - PADDING // 2 - draw.textlength(watermark, font=watermark_font)
-    draw.text((x, canvas.height - 50), watermark, font=watermark_font, fill=MUTED_COLOR)
+    draw.text((watermark_x, canvas.height - 50), watermark, font=watermark_font, fill=MUTED_COLOR)
     return _to_jpeg(canvas)
 
 

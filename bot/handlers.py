@@ -4,7 +4,7 @@ import time
 
 from . import meme, stats, telegram
 from .config import ADMIN_ID, YEAR
-from .promises import WHAT, WHO, promise_text, random_pair
+from .promises import WHAT, WHO, find_pair, pair_key, promise_text, random_pair
 
 SPIN_FRAMES = 4
 FRAME_DELAY = 0.35
@@ -51,25 +51,33 @@ def on_message(message):
 def on_callback(query):
     chat_id = query["message"]["chat"]["id"]
     action, *args = query["data"].split(":")
-    args = [int(a) for a in args]
     user_id = query.get("from", {}).get("id")
 
     if action == "spin":
         stats.record(user_id, "spin")
-    elif action == "pick":
-        stats.record(user_id, "meme", photo_id=args[2])
-    else:
-        stats.record(user_id)
-
-    if action == "spin":
         telegram.call("answerCallbackQuery", {"callback_query_id": query["id"]})
         spin(chat_id)
-    elif action == "meme":
+        return
+
+    pair = find_pair(*args[:2]) if len(args) >= 2 else None
+    if pair is None:
+        stats.record(user_id)
+        telegram.call("answerCallbackQuery", {
+            "callback_query_id": query["id"],
+            "text": "Это обещание уже устарело — крутани ещё раз 🎲",
+            "show_alert": True,
+        })
+        return
+
+    if action == "meme":
+        stats.record(user_id)
         telegram.call("answerCallbackQuery", {"callback_query_id": query["id"]})
-        choose_photo(chat_id, *args)
+        choose_photo(chat_id, *pair)
     elif action == "pick":
+        photo_id = int(args[2])
+        stats.record(user_id, "meme", photo_id=photo_id)
         telegram.call("answerCallbackQuery", {"callback_query_id": query["id"], "text": "Рисую мем…"})
-        send_meme(chat_id, *args)
+        send_meme(chat_id, *pair, photo_id)
 
 
 def _formatted(who_id, what_id):
@@ -104,7 +112,7 @@ def spin(chat_id):
         "parse_mode": "HTML",
         "reply_markup": keyboard([
             button("🔁 Ещё раз", "spin"),
-            button("🖼 Сделать мем", f"meme:{who_id}:{what_id}"),
+            button("🖼 Сделать мем", f"meme:{pair_key(who_id, what_id)}"),
         ]),
     })
 
@@ -112,7 +120,8 @@ def spin(chat_id):
 def choose_photo(chat_id, who_id, what_id):
     global _gallery_file_id
     count = len(meme.list_photos())
-    numbers = [button(str(i + 1), f"pick:{who_id}:{what_id}:{i}") for i in range(count)]
+    key = pair_key(who_id, what_id)
+    numbers = [button(str(i + 1), f"pick:{key}:{i}") for i in range(count)]
     per_row = meme.gallery_columns(count)
     rows = [numbers[i:i + per_row] for i in range(0, count, per_row)]
     params = {
@@ -141,6 +150,6 @@ def send_meme(chat_id, who_id, what_id, photo_id):
         "text": "Готово! Перешли друзьям — пусть тоже крутят 🎄",
         "reply_markup": keyboard([
             button("🎲 Крутить ещё", "spin"),
-            button("🖼 Другое фото", f"meme:{who_id}:{what_id}"),
+            button("🖼 Другое фото", f"meme:{pair_key(who_id, what_id)}"),
         ]),
     })

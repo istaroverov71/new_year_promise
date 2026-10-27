@@ -140,7 +140,7 @@ def send_meme(chat_id, who_id, what_id, photo_id):
         "chat_id": chat_id,
         "text": "Готово! Перешли друзьям — пусть тоже крутят 🎄",
         "reply_markup": keyboard([
-            button("🖼 Другое фото", f"meme:{who_id}:{what_id}"),
             button("🎲 Крутить ещё", "spin"),
+            button("🖼 Другое фото", f"meme:{who_id}:{what_id}"),
         ]),
     })

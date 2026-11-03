@@ -9,6 +9,14 @@ from .promises import WHAT, WHO, find_pair, pair_key, promise_text, random_pair
 SPIN_FRAMES = 4
 FRAME_DELAY = 0.35
 
+# Постоянная кнопка над клавиатурой: одно нажатие — новое обещание
+PROMISE_BUTTON = "🎲 Обещание"
+COMMANDS = [
+    {"command": "promise", "description": "Новое обещание"},
+    {"command": "start", "description": "Начать"},
+]
+_commands_set = False
+
 # file_id картинки с выбором фото: после первой загрузки Telegram отдаёт её мгновенно
 _gallery_file_id = None
 
@@ -36,16 +44,33 @@ def on_message(message):
         telegram.call("sendMessage", {"chat_id": message["chat"]["id"], "text": stats.report()})
         return
 
+    if text == PROMISE_BUTTON or text.startswith("/promise"):
+        stats.record(user_id, "spin")
+        spin(message["chat"]["id"])
+        return
+
     stats.record(user_id, "start" if text.startswith("/start") else None)
+    _set_commands()
     telegram.call("sendMessage", {
         "chat_id": message["chat"]["id"],
         "text": (
             f"🎄 Привет! Я Генератор Новогодних Обещаний на {YEAR} год.\n\n"
-            "Жми «Крутить» — барабаны решат, кому и что ты пообещаешь. "
+            f"Жми «{PROMISE_BUTTON}» внизу — барабаны решат, кому и что ты пообещаешь. "
             "А потом сделаем из этого мем и отправим друзьям."
         ),
-        "reply_markup": keyboard([button("🎲 Крутить", "spin")]),
+        "reply_markup": {
+            "keyboard": [[{"text": PROMISE_BUTTON}]],
+            "resize_keyboard": True,
+            "is_persistent": True,
+        },
     })
+
+
+def _set_commands():
+    """Команды в кнопке «Меню» — один раз на запуск сервера."""
+    global _commands_set
+    if not _commands_set:
+        _commands_set = bool(telegram.call("setMyCommands", {"commands": COMMANDS}))
 
 
 def on_callback(query):

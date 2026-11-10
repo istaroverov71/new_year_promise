@@ -19,7 +19,7 @@ def call(method, params=None, files=None):
         with urllib.request.urlopen(request, timeout=20) as response:
             return json.load(response).get("result")
     except urllib.error.HTTPError as error:
-        print(f"Telegram {method} error: {error.read().decode(errors='replace')}")
+        print(f"Telegram {method} error: {error.read().decode(errors='replace')}", flush=True)
         return None
 
 

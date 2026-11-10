@@ -19,7 +19,7 @@ class handler(BaseHTTPRequestHandler):
         try:
             handle_update(json.loads(self.rfile.read(length) or b"{}"))
         except Exception as error:  # не роняем вебхук, иначе Telegram будет слать событие повторно
-            print(f"Error while handling update: {error!r}")
+            print(f"Error while handling update: {error!r}", flush=True)
         self._reply(200, "ok")
 
     def do_GET(self):

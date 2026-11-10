@@ -30,7 +30,14 @@ class handler(BaseHTTPRequestHandler):
             "allowed_updates": ["message", "callback_query", "inline_query", "chosen_inline_result"],
         })
         telegram.call("setMyCommands", {"commands": COMMANDS})
-        self._reply(200, {"ok": bool(result), "webhook": url})
+        info = telegram.call("getWebhookInfo") or {}
+        self._reply(200, {
+            "ok": bool(result),
+            "webhook": url,
+            "allowed_updates": info.get("allowed_updates"),
+            "pending_updates": info.get("pending_update_count"),
+            "last_error": info.get("last_error_message"),
+        })
 
     def _reply(self, status, payload):
         self.send_response(status)

@@ -55,7 +55,7 @@ def record(user_id, event=None, photo_id=None):
     try:
         _pipeline(commands)
     except Exception as error:  # статистика не должна ломать бота
-        print(f"Stats error: {error!r}")
+        print(f"Stats error: {error!r}", flush=True)
 
 
 def report():

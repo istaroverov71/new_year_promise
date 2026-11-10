@@ -229,9 +229,10 @@ def on_inline_query(query):
             "title": "Новогоднее обещание",
             "description": promise_text(*pair),
         })
-    telegram.call("answerInlineQuery", {
+    answered = telegram.call("answerInlineQuery", {
         "inline_query_id": query["id"],
         "results": results,
         "cache_time": 0 if personal else 86400,
         "is_personal": personal,
     })
+    print(f"Inline query {query.get('query')!r}: {len(results)} result(s), answered={answered}", flush=True)

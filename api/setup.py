@@ -27,7 +27,7 @@ class handler(BaseHTTPRequestHandler):
         result = telegram.call("setWebhook", {
             "url": url,
             "secret_token": WEBHOOK_SECRET,
-            "allowed_updates": ["message", "callback_query"],
+            "allowed_updates": ["message", "callback_query", "inline_query", "chosen_inline_result"],
         })
         telegram.call("setMyCommands", {"commands": COMMANDS})
         self._reply(200, {"ok": bool(result), "webhook": url})

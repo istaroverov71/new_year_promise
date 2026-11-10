@@ -1,6 +1,9 @@
 """Что бот делает в ответ на сообщения и нажатия кнопок."""
 import html
+import os
+import random
 import time
+from urllib.parse import urlencode
 
 from . import meme, stats, telegram
 from .config import ADMIN_ID, YEAR
@@ -34,6 +37,11 @@ def handle_update(update):
         on_message(update["message"])
     elif "callback_query" in update:
         on_callback(update["callback_query"])
+    elif "inline_query" in update:
+        on_inline_query(update["inline_query"])
+    elif "chosen_inline_result" in update:
+        # человек отправил мем другу через кнопку «Отправить другу» или через @бота в чате
+        stats.record(update["chosen_inline_result"].get("from", {}).get("id"), "share")
 
 
 def on_message(message):
@@ -181,8 +189,51 @@ def send_meme(chat_id, who_id, what_id, photo_id):
     telegram.call("sendMessage", {
         "chat_id": chat_id,
         "text": "Готово! Перешли друзьям — пусть тоже крутят 🎄",
-        "reply_markup": keyboard([
-            button("🎲 Крутить ещё", "spin"),
-            button("🖼 Другое фото", f"meme:{pair_key(who_id, what_id)}"),
-        ]),
+        "reply_markup": keyboard(
+            [{"text": "📤 Отправить другу", "switch_inline_query": f"{pair_key(who_id, what_id)}:{photo_id}"}],
+            [
+                button("🎲 Крутить ещё", "spin"),
+                button("🖼 Другое фото", f"meme:{pair_key(who_id, what_id)}"),
+            ],
+        ),
+    })
+
+
+def meme_url(who_id, what_id, photo_id, thumb=False):
+    """Ссылка, по которой Telegram сам скачивает готовый мем (нужна для отправки через @бота)."""
+    domain = os.environ.get("VERCEL_PROJECT_PRODUCTION_URL")
+    if not domain:
+        return None
+    query = {"k": pair_key(who_id, what_id), "p": photo_id}
+    if thumb:
+        query["t"] = 1
+    return f"https://{domain}/api/meme?{urlencode(query)}"
+
+
+def on_inline_query(query):
+    """Отправка мема в любой чат: по кнопке «Отправить другу» или если набрать @бота."""
+    parts = query.get("query", "").strip().split(":")
+    pair = find_pair(*parts[:2]) if len(parts) == 3 else None
+    photo_id = _photo_id(parts) if pair else None
+    personal = pair is None or photo_id is None
+    if personal:
+        # пустой или непонятный запрос — выдаём случайное обещание
+        pair, photo_id = random_pair(), random.randrange(len(meme.list_photos()))
+
+    url = meme_url(*pair, photo_id)
+    results = []
+    if url:
+        results.append({
+            "type": "photo",
+            "id": f"{pair_key(*pair)}:{photo_id}",
+            "photo_url": url,
+            "thumbnail_url": meme_url(*pair, photo_id, thumb=True),
+            "title": "Новогоднее обещание",
+            "description": promise_text(*pair),
+        })
+    telegram.call("answerInlineQuery", {
+        "inline_query_id": query["id"],
+        "results": results,
+        "cache_time": 0 if personal else 86400,
+        "is_personal": personal,
     })

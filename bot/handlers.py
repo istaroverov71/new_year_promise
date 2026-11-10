@@ -183,22 +183,13 @@ def send_meme(chat_id, who_id, what_id, photo_id):
     photos = meme.list_photos()
     telegram.call("sendChatAction", {"chat_id": chat_id, "action": "upload_photo"})
     image = meme.render_meme(photos[photo_id], promise_text(who_id, what_id))
-    sent = telegram.call("sendPhoto", {"chat_id": chat_id}, files={"photo": ("meme.jpg", image)})
-    if not sent:
-        return
-    # Мем уже лежит в Telegram — кнопка «Отправить другу» пересылает именно его, ничего не скачивая
-    file_id = sent["photo"][-1]["file_id"]
-    telegram.call("editMessageReplyMarkup", {
+    telegram.call("sendPhoto", {
         "chat_id": chat_id,
-        "message_id": sent["message_id"],
-        "reply_markup": keyboard(
-            [{"text": "📤 Отправить другу", "switch_inline_query": file_id}],
-            [
-                button("🎲 Крутить ещё", "spin"),
-                button("🖼 Другое фото", f"meme:{pair_key(who_id, what_id)}"),
-            ],
-        ),
-    })
+        "reply_markup": keyboard([
+            button("🎲 Крутить ещё", "spin"),
+            button("🖼 Другое фото", f"meme:{pair_key(who_id, what_id)}"),
+        ]),
+    }, files={"photo": ("meme.jpg", image)})
 
 
 def on_inline_query(query):

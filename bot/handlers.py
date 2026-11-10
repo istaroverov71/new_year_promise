@@ -16,6 +16,8 @@ COMMANDS = [
     {"command": "promise", "description": "Новое обещание"},
     {"command": "start", "description": "Начать"},
 ]
+# Владелец видит в меню ещё и статистику, остальные — только команды выше
+ADMIN_COMMANDS = COMMANDS + [{"command": "stats", "description": "Статистика бота"}]
 _commands_set = False
 
 # file_id картинки с выбором фото: после первой загрузки Telegram отдаёт её мгновенно
@@ -72,11 +74,22 @@ def on_message(message):
     })
 
 
+def set_commands():
+    """Команды в кнопке «Меню»: общие для всех и расширенные для владельца."""
+    ok = bool(telegram.call("setMyCommands", {"commands": COMMANDS}))
+    if ADMIN_ID:
+        telegram.call("setMyCommands", {
+            "commands": ADMIN_COMMANDS,
+            "scope": {"type": "chat", "chat_id": int(ADMIN_ID)},
+        })
+    return ok
+
+
 def _set_commands():
-    """Команды в кнопке «Меню» — один раз на запуск сервера."""
+    """Выставляем команды один раз на запуск сервера."""
     global _commands_set
     if not _commands_set:
-        _commands_set = bool(telegram.call("setMyCommands", {"commands": COMMANDS}))
+        _commands_set = set_commands()
 
 
 def on_callback(query):

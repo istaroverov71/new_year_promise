@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from bot import telegram  # noqa: E402
 from bot.config import BOT_TOKEN, WEBHOOK_SECRET  # noqa: E402
-from bot.handlers import COMMANDS  # noqa: E402
+from bot.handlers import set_commands  # noqa: E402
 
 
 class handler(BaseHTTPRequestHandler):
@@ -29,7 +29,7 @@ class handler(BaseHTTPRequestHandler):
             "secret_token": WEBHOOK_SECRET,
             "allowed_updates": ["message", "callback_query", "inline_query", "chosen_inline_result"],
         })
-        telegram.call("setMyCommands", {"commands": COMMANDS})
+        set_commands()
         info = telegram.call("getWebhookInfo") or {}
         self._reply(200, {
             "ok": bool(result),

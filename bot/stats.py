@@ -14,7 +14,7 @@ REDIS_TOKEN = os.environ.get("KV_REST_API_TOKEN") or os.environ.get("UPSTASH_RED
 
 MOSCOW = timezone(timedelta(hours=3))
 DAY_TTL = 60 * 60 * 24 * 60  # дневные счётчики храним 60 дней
-EVENTS = ("start", "spin", "meme", "share")
+EVENTS = ("start", "spin", "meme")
 
 
 def enabled():
@@ -86,7 +86,7 @@ def report():
         f"Сегодня: {users_today} · за 7 дней: {users_week}",
         "",
     ]
-    names = {"start": "Запусков /start", "spin": "Прокруток", "meme": "Мемов", "share": "Отправлено друзьям"}
+    names = {"start": "Запусков /start", "spin": "Прокруток", "meme": "Мемов"}
     for index, event in enumerate(EVENTS):
         lines.append(f"{names[event]}: {counts[2 * index]} (сегодня {counts[2 * index + 1]})")
     lines += ["", f"Популярные фото: {top}"]

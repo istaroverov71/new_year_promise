@@ -27,7 +27,7 @@ class handler(BaseHTTPRequestHandler):
         result = telegram.call("setWebhook", {
             "url": url,
             "secret_token": WEBHOOK_SECRET,
-            "allowed_updates": ["message", "callback_query", "inline_query", "chosen_inline_result"],
+            "allowed_updates": ["message", "callback_query", "inline_query"],
         })
         set_commands()
         info = telegram.call("getWebhookInfo") or {}

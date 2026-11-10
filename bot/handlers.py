@@ -39,9 +39,6 @@ def handle_update(update):
         on_callback(update["callback_query"])
     elif "inline_query" in update:
         on_inline_query(update["inline_query"])
-    elif "chosen_inline_result" in update:
-        # человек отправил мем другу через кнопку «Отправить другу» или через @бота в чате
-        stats.record(update["chosen_inline_result"].get("from", {}).get("id"), "share")
 
 
 def on_message(message):

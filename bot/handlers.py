@@ -1,12 +1,10 @@
 """Что бот делает в ответ на сообщения и нажатия кнопок."""
+import hashlib
 import html
-import os
-import random
 import time
-from urllib.parse import urlencode
 
 from . import meme, stats, telegram
-from .config import ADMIN_ID, YEAR
+from .config import ADMIN_ID, BOT_USERNAME, YEAR
 from .promises import WHAT, WHO, find_pair, pair_key, promise_text, random_pair
 
 SPIN_FRAMES = 4
@@ -185,54 +183,47 @@ def send_meme(chat_id, who_id, what_id, photo_id):
     photos = meme.list_photos()
     telegram.call("sendChatAction", {"chat_id": chat_id, "action": "upload_photo"})
     image = meme.render_meme(photos[photo_id], promise_text(who_id, what_id))
-    telegram.call("sendPhoto", {
+    sent = telegram.call("sendPhoto", {"chat_id": chat_id}, files={"photo": ("meme.jpg", image)})
+    if not sent:
+        return
+    # Мем уже лежит в Telegram — кнопка «Отправить другу» пересылает именно его, ничего не скачивая
+    file_id = sent["photo"][-1]["file_id"]
+    telegram.call("editMessageReplyMarkup", {
         "chat_id": chat_id,
+        "message_id": sent["message_id"],
         "reply_markup": keyboard(
-            [{"text": "📤 Отправить другу", "switch_inline_query": f"{pair_key(who_id, what_id)}:{photo_id}"}],
+            [{"text": "📤 Отправить другу", "switch_inline_query": file_id}],
             [
                 button("🎲 Крутить ещё", "spin"),
                 button("🖼 Другое фото", f"meme:{pair_key(who_id, what_id)}"),
             ],
         ),
-    }, files={"photo": ("meme.jpg", image)})
-
-
-def meme_url(who_id, what_id, photo_id, thumb=False):
-    """Ссылка, по которой Telegram сам скачивает готовый мем (нужна для отправки через @бота)."""
-    domain = os.environ.get("VERCEL_PROJECT_PRODUCTION_URL")
-    if not domain:
-        return None
-    query = {"k": pair_key(who_id, what_id), "p": photo_id}
-    if thumb:
-        query["t"] = 1
-    return f"https://{domain}/api/meme?{urlencode(query)}"
+    })
 
 
 def on_inline_query(query):
-    """Отправка мема в любой чат: по кнопке «Отправить другу» или если набрать @бота."""
-    parts = query.get("query", "").strip().split(":")
-    pair = find_pair(*parts[:2]) if len(parts) == 3 else None
-    photo_id = _photo_id(parts) if pair else None
-    personal = pair is None or photo_id is None
-    if personal:
-        # пустой или непонятный запрос — выдаём случайное обещание
-        pair, photo_id = random_pair(), random.randrange(len(meme.list_photos()))
-
-    url = meme_url(*pair, photo_id)
-    results = []
-    if url:
-        results.append({
+    """Отправка в любой чат: мем по кнопке «Отправить другу» или случайное обещание, если набрать @бота."""
+    text = query.get("query", "").strip()
+    if len(text) > 30 and " " not in text and ":" not in text:
+        result = {
             "type": "photo",
-            "id": f"{pair_key(*pair)}:{photo_id}",
-            "photo_url": url,
-            "thumbnail_url": meme_url(*pair, photo_id, thumb=True),
-            "title": "Новогоднее обещание",
+            "id": hashlib.sha1(text.encode()).hexdigest()[:32],
+            "photo_file_id": text,
+        }
+        cache = {"cache_time": 86400, "is_personal": False}
+    else:
+        pair = random_pair()
+        result = {
+            "type": "article",
+            "id": pair_key(*pair).replace(":", ""),
+            "title": "🎲 Случайное новогоднее обещание",
             "description": promise_text(*pair),
-        })
-    answered = telegram.call("answerInlineQuery", {
-        "inline_query_id": query["id"],
-        "results": results,
-        "cache_time": 0 if personal else 86400,
-        "is_personal": personal,
-    })
-    print(f"Inline query {query.get('query')!r}: {len(results)} result(s), answered={answered}", flush=True)
+            "input_message_content": {"message_text": f"✨ {promise_text(*pair)}"},
+            "reply_markup": {"inline_keyboard": [[{
+                "text": "🎲 Получить своё обещание",
+                "url": f"https://t.me/{BOT_USERNAME}?start=promise",
+            }]]},
+        }
+        cache = {"cache_time": 0, "is_personal": True}
+    answered = telegram.call("answerInlineQuery", {"inline_query_id": query["id"], "results": [result], **cache})
+    print(f"Inline query ({result['type']}): answered={answered}", flush=True)

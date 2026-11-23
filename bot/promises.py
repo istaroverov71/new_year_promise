@@ -12,10 +12,12 @@ def _load(name):
 
 WHO = _load("who.txt")
 WHAT = _load("what.txt")
+_RECIPIENT_RULES = json.loads(
+    (DATA_DIR / "recipient_promises.json").read_text(encoding="utf-8")
+)
 
 
-def _load_recipient_options():
-    rules = json.loads((DATA_DIR / "recipient_promises.json").read_text(encoding="utf-8"))
+def _load_recipient_options(rules):
     reserved = {
         text
         for rule in rules.values()
@@ -31,9 +33,13 @@ def _load_recipient_options():
     return options
 
 
-_WHAT_FOR_WHO = _load_recipient_options()
+_WHAT_FOR_WHO = _load_recipient_options(_RECIPIENT_RULES)
 # Если все подходящие фразы удалены, адресат пропускается при прокрутке.
 _SPIN_WHO = tuple(index for index, options in enumerate(_WHAT_FOR_WHO) if options)
+_SPIN_WEIGHTS = tuple(
+    _RECIPIENT_RULES.get(WHO[index], {}).get("weight", 1)
+    for index in _SPIN_WHO
+)
 
 
 def phrase_key(text):
@@ -58,7 +64,7 @@ def find_pair(who_key, what_key):
 
 def random_pair():
     """Выбирает адресата, затем подходящее ему обещание."""
-    who_id = random.choice(_SPIN_WHO)
+    who_id = random.choices(_SPIN_WHO, weights=_SPIN_WEIGHTS, k=1)[0]
     return who_id, random.choice(_WHAT_FOR_WHO[who_id])
 
 

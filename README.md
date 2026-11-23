@@ -6,7 +6,7 @@ Telegram-бот [@newyear_generator_bot](https://t.me/newyear_generator_bot): к
 ## Что где лежит
 
 - `data/who.txt`, `data/what.txt` — фразы, по одной на строку. Можно править прямо на GitHub.
-- `data/recipient_promises.json` — списки подходящих обещаний для отдельных адресатов. Фразы берутся из `data/what.txt` по точному совпадению текста.
+- `data/recipient_promises.json` — правила подбора по адресатам. Фразы из `exclusive` могут выпасть только указанным адресатам. При `only_listed: true` адресат получает фразы из своих `include` и `exclusive`. Текст фраз берётся из `data/what.txt` по точному совпадению.
 - `photos/` — фото для мемов (jpg/png). Порядок в боте — по алфавиту имён файлов, так что удобно называть `01.jpg`, `02.jpg`…
 - `fonts/Rubik.ttf` — шрифт надписи (свободная лицензия OFL).
 - `bot/` — код бота: `handlers.py` — что бот отвечает, `meme.py` — рисование мема, `promises.py` — сборка фразы.

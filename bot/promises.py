@@ -15,20 +15,25 @@ WHAT = _load("what.txt")
 
 
 def _load_recipient_options():
-    matches = json.loads((DATA_DIR / "recipient_promises.json").read_text(encoding="utf-8"))
-    what_by_text = {text: index for index, text in enumerate(WHAT)}
-    return {
-        recipient: tuple(what_by_text[text] for text in phrases if text in what_by_text)
-        for recipient, phrases in matches.items()
+    rules = json.loads((DATA_DIR / "recipient_promises.json").read_text(encoding="utf-8"))
+    reserved = {
+        text
+        for rule in rules.values()
+        for text in rule.get("exclusive", ())
     }
+    common = set(WHAT) - reserved
+    options = []
+    for recipient in WHO:
+        rule = rules.get(recipient, {})
+        base = common.intersection(rule.get("include", ())) if rule.get("only_listed") else common
+        allowed = base.union(rule.get("exclusive", ()))
+        options.append(tuple(index for index, text in enumerate(WHAT) if text in allowed))
+    return options
 
 
 _WHAT_FOR_WHO = _load_recipient_options()
 # Если все подходящие фразы удалены, адресат пропускается при прокрутке.
-_SPIN_WHO = tuple(
-    index for index, recipient in enumerate(WHO)
-    if recipient not in _WHAT_FOR_WHO or _WHAT_FOR_WHO[recipient]
-)
+_SPIN_WHO = tuple(index for index, options in enumerate(_WHAT_FOR_WHO) if options)
 
 
 def phrase_key(text):
@@ -54,9 +59,7 @@ def find_pair(who_key, what_key):
 def random_pair():
     """Выбирает адресата, затем подходящее ему обещание."""
     who_id = random.choice(_SPIN_WHO)
-    options = _WHAT_FOR_WHO.get(WHO[who_id])
-    what_id = random.choice(options) if options is not None else random.randrange(len(WHAT))
-    return who_id, what_id
+    return who_id, random.choice(_WHAT_FOR_WHO[who_id])
 
 
 def promise_text(who_id, what_id):
